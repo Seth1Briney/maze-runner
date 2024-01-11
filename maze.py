@@ -6,79 +6,105 @@ Credit: Barto, Sutton, Adam White, Martha White, Richard Weiss
 
 Write policy iteration type algorithm using numpy arrays.
 
-Everything will be numpy arrays.
-
 prob_prop_to_value_episode makes decisions proportional to the running estimate of the state value to transition to.
 
 epsilon_greedy_episode is as described, except for the following:
 
-both prob_prop_to_value_episode and epsilon_greedy_episode have a offset to discourage backtracking, that falls off by exactly 1/(steps-last_at_states[y,x]) where y,x is the state in consideration.
+both prob_prop_to_value_episode and epsilon_greedy_episode have an offset to discourage backtracking, that falls off by exactly 1/(steps-last_at_states[y,x]) where y,x is the state in consideration.
+
+The idea here is that an agent (represented by 9) will move through this array (board) until it reaches the terminal state -1.
+
+A state is a pair of indeces n,m which represents a place on the board.
+
+Rules:
+
+The agent can only occupy states with 0,
+The agent can make jump to any 0 entry within the 3x3 sub-array centered at the current state.
+The terminal state is -1, and an episode will end once the terminal state is contained in the 3x3 sub-array centered at the state. 
+
+I will use "the surroundings" to refer to "3x3 sub-array centered at the state".
 
 '''
 
+import argparse
 import numpy as np
+
 N,M = 10,10
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--width', '-x', type=int, default=10, help='width of maze')
+parser.add_argument('--heigh', '-y', type=int, default=10, help='height of maze')
+parser.add_argument('--seed', '-s', type=int, default=None, help='random seed')
+parser.add_argument('--preset', '-p', type=int, default=2, help='Use preset maze, 0, 1, or 2.')
+parser.add_argument('--random', '-r', action='store_true', help='If this is passed use random maze, otherwise use preset. WARNING: some mazes are impossible')
+parser.add_argument('--verbose', '-v', action='store_true', help='Print details about agent progress')
+
+
+args = parser.parse_args()
+assert not args.random, 'random maze not yet supported'
+rng = np.random.default_rng(seed=args.seed)
+quiet = not args.verbose
+n = args.heigh
+m = args.width
+
 # ---------------------------------------------------
 
-#  For generating stuff.
+#  Generate Maze:
 
-# def rand_binary(n,m): # generate random binary nxm array.
-#     return ( np.random.randn(n,m)>0 ).astype(int)
+if args.random:
+    # randomly generate maze with parameters defined in args
+    board = rng.integers(0, 2, (n, m)) # fill randomly with 0s and 1s
+    board[-1,-1]=-1
+    print('Randomly Generated Maze:')
 
-# board = rand_binary(N,M)
-# board[-1,-1]=-1
-# print(board)
+else:
+    # use preset maze 0-2
+    board = {
+        0: np.array(
+            [[0, 1, 1, 1, 0, 1, 0, 1, 1, 0],
+             [0, 0, 1, 0, 1, 0, 0, 1, 1, 0],
+             [0, 1, 1, 0, 0, 0, 1, 0, 0, 0],
+             [0, 0, 1, 0, 1, 0, 1, 0, 0, 0],
+             [0, 0, 0, 1, 0, 1, 1, 1, 0, 0],
+             [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+             [1, 1, 0, 0, 0, 0, 1, 1, 0, 0],
+             [1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+             [1, 1, 1, 1, 0, 0, 1, 0, 1, 0],
+             [0, 0, 0, 0, 0, 0, 1, 1, 1, -1]]
+            ),
+        1: np.array(
+        [[ 1,  1,  1,  1,  1,  0,  1,  1,  0,  0,],
+         [ 0,  1,  1,  1,  0,  1,  1,  0,  0,  1,],
+         [ 0,  0,  0,  1,  1,  1,  0,  1,  0,  0,],
+         [ 0,  0,  0,  1,  0,  1,  1,  1,  0,  0,],
+         [ 0,  1,  1,  0,  0,  0,  1,  1,  0,  0,],
+         [ 1,  1,  0,  0,  1,  0,  0,  0,  1,  0,],
+         [ 0,  0,  0,  1,  1,  0,  1,  1,  1,  1,],
+         [ 0,  1,  1,  1,  0,  1,  0,  0,  0,  0,],
+         [ 1,  1,  0,  1,  0,  0,  0,  1,  1,  1,],
+         [ 0,  0,  0,  0,  0,  0,  1,  0,  0, -1,]]
+        ),
+        2: np.array(
+        [[ 9,  0,  0,  0,  0,  0,  0,  0,  0,  0,],
+         [ 0,  1,  1,  1,  0,  1,  1,  0,  0,  0,],
+         [ 0,  0,  0,  1,  1,  1,  0,  1,  0,  0,],
+         [ 0,  0,  0,  1,  0,  1,  1,  1,  0,  0,],
+         [ 0,  1,  1,  0,  0,  0,  1,  1,  0,  0,],
+         [ 0,  1,  0,  0,  1,  0,  0,  0,  1,  0,],
+         [ 0,  0,  0,  1,  1,  0,  1,  1,  1,  0,],
+         [ 0,  1,  1,  1,  0,  1,  0,  0,  0,  0,],
+         [ 0,  1,  0,  1,  0,  0,  0,  1,  0,  0,],
+         [ 0,  0,  0,  0,  0,  0,  0,  0,  0, -1,]]
+        )
+    }[args.preset]
+    print('Premade maze')
 
-# board = np.zeros((N,M))
-# print(board)
-
-# ---------------------------------------------------
-
-# board = np.array( # randomly generated sort of maze.
-#     [[0, 1, 1, 1, 0, 1, 0, 1, 1, 0],
-#      [0, 0, 1, 0, 1, 0, 0, 1, 1, 0],
-#      [0, 1, 1, 0, 0, 0, 1, 0, 0, 0],
-#      [0, 0, 1, 0, 1, 0, 1, 0, 0, 0],
-#      [0, 0, 0, 1, 0, 1, 1, 1, 0, 0],
-#      [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-#      [1, 1, 0, 0, 0, 0, 1, 1, 0, 0],
-#      [1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-#      [1, 1, 1, 1, 0, 0, 1, 0, 1, 0],
-#      [0, 0, 0, 0, 0, 0, 1, 1, 1, -1]]
-#      )
-# ---------------------------------------------------
-
-# board = np.array( # randomly generated sort of maze.
-# [[ 1,  1,  1,  1,  1,  0,  1,  1,  0,  0,],
-#  [ 0,  1,  1,  1,  0,  1,  1,  0,  0,  1,],
-#  [ 0,  0,  0,  1,  1,  1,  0,  1,  0,  0,],
-#  [ 0,  0,  0,  1,  0,  1,  1,  1,  0,  0,],
-#  [ 0,  1,  1,  0,  0,  0,  1,  1,  0,  0,],
-#  [ 1,  1,  0,  0,  1,  0,  0,  0,  1,  0,],
-#  [ 0,  0,  0,  1,  1,  0,  1,  1,  1,  1,],
-#  [ 0,  1,  1,  1,  0,  1,  0,  0,  0,  0,],
-#  [ 1,  1,  0,  1,  0,  0,  0,  1,  1,  1,],
-#  [ 0,  0,  0,  0,  0,  0,  1,  0,  0, -1,]]
-# )
-# ---------------------------------------------------
-
-board = np.array( # randomly generated sort of maze.
-[[ 9,  0,  0,  0,  0,  0,  0,  0,  0,  0,],
- [ 0,  1,  1,  1,  0,  1,  1,  0,  0,  0,],
- [ 0,  0,  0,  1,  1,  1,  0,  1,  0,  0,],
- [ 0,  0,  0,  1,  0,  1,  1,  1,  0,  0,],
- [ 0,  1,  1,  0,  0,  0,  1,  1,  0,  0,],
- [ 0,  1,  0,  0,  1,  0,  0,  0,  1,  0,],
- [ 0,  0,  0,  1,  1,  0,  1,  1,  1,  0,],
- [ 0,  1,  1,  1,  0,  1,  0,  0,  0,  0,],
- [ 0,  1,  0,  1,  0,  0,  0,  1,  0,  0,],
- [ 0,  0,  0,  0,  0,  0,  0,  0,  0, -1,]]
-)
+print(board)
 
 # ---------------------------------------------------
 
 def sub_board(board,curr_c):
+    # returns index range of 3x3 subgrid centered at agent's location
     y,x = curr_c
 
     if y==0: y_start=y
@@ -95,17 +121,7 @@ def sub_board(board,curr_c):
 
     return y_start,y_end,x_start,x_end
 
-# The idea here is that an agent (represented by 9) will move through this array (board) until it reaches the terminal state -1.
 
-# A state is a pair of indeces n,m which represents a place on the board.
-
-# Rules:
-
-# The agent can only occupy states with 0,
-# The agent can make jump to any 0 entry within the 3x3 sub-array centered at the current state.
-# The terminal state is -1, and an episode will end once the terminal state is contained in the 3x3 sub-array centered at the state. 
-
-# I will use "the surroundings" to refer to "3x3 sub-array centered at the state".
 def prob_prop_to_value_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_back=0.001, max_num_steps = 10**5):
 
     # Regret = np.zeros(board.shape)
@@ -150,6 +166,7 @@ def prob_prop_to_value_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_lo
                     # according to the rules agent can only transfer to states with value 0.
                     feasable_states.append((y,x))
                     transition_probs.append(tmp_Q[y,x])
+
         transition_probs=np.array(transition_probs).reshape(-1,) # required shape for np.random.choice().
         transition_probs=transition_probs*(transition_probs>0)+epsilon # take the max of 0, add epsilon.
         transition_probs = transition_probs/np.sum(transition_probs)
@@ -162,6 +179,7 @@ def prob_prop_to_value_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_lo
             print('greed',greed)
             print('curr_c',curr_c)
             print('next_c',next_c)
+
         board[curr_c[0],curr_c[1]] = 0
         board[next_c[0],next_c[1]] = 9
         curr_c=next_c
@@ -219,6 +237,7 @@ def epsilon_greedy_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_b
                 if ( board[y,x]==0 ):
                     # according to the rules agent can only transfer to states with value 0.
                     feasable_states.append((y,x))
+
         np.random.shuffle(feasable_states) # in case all states are equally likely we don't want bias here.
         greed = np.random.rand()
         if greed < epsilon: # epsilon greedy random action for exploration,
@@ -232,25 +251,31 @@ def epsilon_greedy_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_b
                 if q>most_value:
                     most_value = q
                     next_c = (y,x)
+
         if not quiet:
             print('feasable_states',feasable_states)
             print('greed',greed)
             print('curr_c',curr_c)
             print('next_c',next_c)
+
         board[curr_c[0],curr_c[1]] = 0
         board[next_c[0],next_c[1]] = 9
         curr_c=next_c
         y_start,y_end,x_start,x_end = sub_board(board,curr_c)
+
         if not quiet:
             exec(input('Done? (plz enter done=True or another command, or Enter to continue):'))
+
         steps += 1
     if steps<max_num_steps:
         last_at_states[curr_c[0],curr_c[1]] = steps
         last_at_states = (steps-last_at_states)
         np.save('last_at_states.npy',last_at_states)
         return True,steps
+
     else:
-     return False,steps
+        return False,steps
+
 if __name__=='__main__':
 
     # Learning rate parameters:
@@ -263,7 +288,6 @@ if __name__=='__main__':
     # Policy parameters:
     board=board
     initial_c=(0,0)
-    quiet=True
     epsilon=0.1
     dont_look_back=0.5
 
@@ -300,3 +324,6 @@ if __name__=='__main__':
 
         heat_map = sns.heatmap(Q)
         plt.show()
+
+    else:
+        print('Agent failed to find goal')
