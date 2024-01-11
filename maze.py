@@ -4,7 +4,9 @@ Author: Seth Briney
 
 Credit: Barto, Sutton, Adam White, Martha White, Richard Weiss
 
-Write policy iteration type algorithm using numpy arrays.
+Assignment: Write policy iteration type algorithm using numpy arrays.
+
+The following program utilizes tabular Q-learning to train a maze-runner reinforcement learning control agent.
 
 prob_prop_to_value_episode makes decisions proportional to the running estimate of the state value to transition to.
 
@@ -42,6 +44,8 @@ parser.add_argument('--verbose', '-v', action='store_true', help='Print details 
 
 args = parser.parse_args()
 assert not args.random, 'random maze not yet supported'
+assert 0<=args.preset<=2, 'only preset mazes 0, 1, and 2 are currently supported'
+
 rng = np.random.default_rng(seed=args.seed)
 quiet = not args.verbose
 n = args.heigh
@@ -127,18 +131,17 @@ def prob_prop_to_value_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_lo
     # Regret = np.zeros(board.shape)
 
     curr_c = initial_c # the agent starts at 0,0
-    x_start,x_end,y_start,y_end = sub_board(board,curr_c) # this at-most 3x3 sub-array centered at curr_c.
+    x_start, x_end, y_start, y_end = sub_board(board,curr_c) # this at-most 3x3 sub-array centered at curr_c.
 
     done = False
     steps = 1
     last_at_states = np.ones(Q.shape)*(-np.inf) # minus because will be subtracting from final steps.
-    while ( 
-    (not (-1 in board[y_start:y_end+1,x_start:x_end+1])) 
-     and  ( not done ) 
-     and  ( steps<max_num_steps ) ):
+    while ( (   not (-1 in board[y_start:y_end+1,x_start:x_end+1]))
+                and  ( not done ) 
+                and  ( steps<max_num_steps ) ):
 
-        last_at_states[curr_c[0],curr_c[1]] = steps
-        board[curr_c[0],curr_c[1]] = 9
+        last_at_states[curr_c[0], curr_c[1]] = steps
+        board[curr_c[0], curr_c[1]] = 9
         # boundaries of surroundings (inclusive so use end_z+1 in loops)
 
         if not quiet:
@@ -160,40 +163,44 @@ def prob_prop_to_value_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_lo
         feasable_states = []
         transition_probs = []
         tmp_Q = Q-dont_look_back/(steps-last_at_states)
-        for y in range(y_start,y_end+1):
-            for x in range(x_start,x_end+1):
-                if ( board[y,x]==0 ):
-                    # according to the rules agent can only transfer to states with value 0.
-                    feasable_states.append((y,x))
-                    transition_probs.append(tmp_Q[y,x])
+        for y in range(y_start, y_end+1):
+            for x in range(x_start, x_end+1):
+                if ( board[y, x]==0 ):
+                    # according to the rules agent can only transfer to states with board value 0.
+                    feasable_states.append((y, x))
+                    transition_probs.append(tmp_Q[y, x])
 
-        transition_probs=np.array(transition_probs).reshape(-1,) # required shape for np.random.choice().
-        transition_probs=transition_probs*(transition_probs>0)+epsilon # take the max of 0, add epsilon.
+        transition_probs = np.array(transition_probs).reshape(-1,) # required shape for np.random.choice().
+        transition_probs = transition_probs*(transition_probs>0) + epsilon # take the max of 0, add epsilon.
         transition_probs = transition_probs/np.sum(transition_probs)
-        next_c = feasable_states[
-                np.random.choice( 
-                    [n for n in range(transition_probs.size)]
-                    , p = transition_probs ) ]
+        next_idx = np.random.choice( list(range(transition_probs.size)), p = transition_probs )
+        next_c = feasable_states[next_idx]
+
         if not quiet:
             print('feasable_states',feasable_states)
             print('greed',greed)
             print('curr_c',curr_c)
             print('next_c',next_c)
 
-        board[curr_c[0],curr_c[1]] = 0
-        board[next_c[0],next_c[1]] = 9
+        board[curr_c[0], curr_c[1]] = 0
+        board[next_c[0], next_c[1]] = 9
+
         curr_c=next_c
         y_start,y_end,x_start,x_end = sub_board(board,curr_c)
+
         if not quiet:
             exec(input('Done? (plz enter done=True or another command, or Enter to continue):'))
+
         steps += 1
+
     if steps<max_num_steps:
         last_at_states[curr_c[0],curr_c[1]] = steps
         last_at_states = (steps-last_at_states)
-        np.save('last_at_states.npy',last_at_states)
-        return True,steps
+        np.save('last_at_states.npy', last_at_states)
+        return True, steps
+
     else:
-     return False,steps
+        return False, steps
 
 def epsilon_greedy_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_back=0.001, regret = 0.00001, max_num_steps = 10**5):
 
@@ -205,13 +212,12 @@ def epsilon_greedy_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_b
     done = False
     steps = 1
     last_at_states = np.ones(Q.shape)*(-np.inf) # minus because will be subtracting from final steps.
-    while ( 
-    (not (-1 in board[y_start:y_end+1,x_start:x_end+1])) 
-     and  ( not done ) 
-     and  ( steps<max_num_steps ) ):
+    while ( (   not (-1 in board[y_start:y_end+1,x_start:x_end+1])) 
+                and  ( not done ) 
+                and  ( steps<max_num_steps ) ):
 
-        last_at_states[curr_c[0],curr_c[1]] = steps
-        board[curr_c[0],curr_c[1]] = 9
+        last_at_states[curr_c[0], curr_c[1]] = steps
+        board[curr_c[0], curr_c[1]] = 9
         # boundaries of surroundings (inclusive so use end_z+1 in loops)
 
         if not quiet:
@@ -236,7 +242,7 @@ def epsilon_greedy_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_b
             for x in range(x_start,x_end+1):
                 if ( board[y,x]==0 ):
                     # according to the rules agent can only transfer to states with value 0.
-                    feasable_states.append((y,x))
+                    feasable_states.append((y, x))
 
         np.random.shuffle(feasable_states) # in case all states are equally likely we don't want bias here.
         greed = np.random.rand()
@@ -267,6 +273,7 @@ def epsilon_greedy_episode(board, initial_c, Q, quiet, epsilon=0.01, dont_look_b
             exec(input('Done? (plz enter done=True or another command, or Enter to continue):'))
 
         steps += 1
+
     if steps<max_num_steps:
         last_at_states[curr_c[0],curr_c[1]] = steps
         last_at_states = (steps-last_at_states)
@@ -287,7 +294,7 @@ if __name__=='__main__':
     # epsilon_greedy = False
     # Policy parameters:
     board=board
-    initial_c=(0,0)
+    initial_c=(0, 0)
     epsilon=0.1
     dont_look_back=0.5
 
@@ -298,14 +305,13 @@ if __name__=='__main__':
 
     # np.set_printoptions(precision=4)
     if epsilon_greedy:
-        reached_goal, steps = epsilon_greedy_episode( board=board,initial_c=initial_c,Q=Q,quiet=quiet,epsilon=epsilon,dont_look_back=dont_look_back )
+        reached_goal, steps = epsilon_greedy_episode( board=board, initial_c=initial_c, Q=Q, quiet=quiet, epsilon=epsilon, dont_look_back=dont_look_back )
     else:
-        reached_goal, steps = prob_prop_to_value_episode( board=board,initial_c=initial_c,Q=Q,quiet=quiet,epsilon=epsilon,dont_look_back=dont_look_back )
-
+        reached_goal, steps = prob_prop_to_value_episode( board=board, initial_c=initial_c, Q=Q, quiet=quiet, epsilon=epsilon, dont_look_back=dont_look_back )
 
     if reached_goal:
-        print('steps:',steps)
-        with open('steps.txt','a') as file: 
+        print('steps:', steps)
+        with open('steps.txt', 'a') as file: 
             file.write(str(steps)+'\n')
         last_at_states=np.load('last_at_states.npy')
         print('board')
@@ -316,7 +322,7 @@ if __name__=='__main__':
         Q_update = gamma**(last_at_states)
         # print('update\n',Q_update)
         Q = (1-alpha)*Q + alpha*Q_update
-        np.save('Q.npy',Q)
+        np.save('Q.npy', Q)
         # print('Q\n',Q)
 
         import matplotlib.pyplot as plt
