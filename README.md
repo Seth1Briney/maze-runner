@@ -1,6 +1,10 @@
+Author: Seth Briney
+Contact: seth@sethbriney.com
+
 This is a slight revision of a maze-running reinforcement learning AI I wrote while taking some undergrad classes at The Evergreen State College, in preparation for my Master of Computer Science degree.
 
-It produces a graphical output of the Q values of the maze grid.
+It produces a graphical output of the Q values of the maze grid. Here's an example for default parameters:
+![Alt text](preset-2.png)
 
 Author: Seth Briney
 

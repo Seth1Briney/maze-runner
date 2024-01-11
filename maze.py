@@ -36,7 +36,7 @@ N,M = 10,10
 parser = argparse.ArgumentParser()
 parser.add_argument('--width', '-x', type=int, default=10, help='width of maze')
 parser.add_argument('--heigh', '-y', type=int, default=10, help='height of maze')
-parser.add_argument('--seed', '-s', type=int, default=None, help='random seed')
+parser.add_argument('--seed', '-s', type=int, default=None, help='random seed for maze generation (doesn\'t affect agent\' actions)')
 parser.add_argument('--preset', '-p', type=int, default=2, help='Use preset maze, 0, 1, or 2.')
 parser.add_argument('--random', '-r', action='store_true', help='If this is passed use random maze, otherwise use preset. WARNING: some mazes are impossible')
 parser.add_argument('--verbose', '-v', action='store_true', help='Print details about agent progress')
