@@ -1,14 +1,17 @@
 Author: Seth Briney
-Contact: seth@sethbriney.com
+
+Acknowledgments: 
+Special thanks to Richard S. Sutton, Andrew G. Barto, Adam White, Martha White, and Richard Weiss
+
+Please feel free to email any questions about this program or reinforcement learning in general to seth@sethbriney.com.
 
 This is a slight revision of a maze-running reinforcement learning AI I wrote while taking some undergrad classes at The Evergreen State College, in preparation for my Master of Computer Science degree.
 
 It produces a graphical output of the Q values of the maze grid. Here's an example for default parameters:
 ![Alt text](preset-2.png)
 
-Author: Seth Briney
 
-Credit: Barto, Sutton, Adam White, Martha White, Richard Weiss
+
 
 Assignment: Write policy iteration type algorithm using numpy arrays.
 

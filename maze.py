@@ -2,7 +2,8 @@
 
 Author: Seth Briney
 
-Credit: Barto, Sutton, Adam White, Martha White, Richard Weiss
+Acknowledgments: 
+Special thanks to Richard S. Sutton, Andrew G. Barto, Adam White, Martha White, and Richard Weiss
 
 Assignment: Write policy iteration type algorithm using numpy arrays.
 
